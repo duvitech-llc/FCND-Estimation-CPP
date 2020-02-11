@@ -180,25 +180,24 @@ PASS: ABS(Quad.Est.E.Yaw-0.000000) was less than Quad.Est.S.Yaw for 68% of the t
 ```
 ### Step 5: Closed Loop + GPS Update ###
 
-1. Run scenario `11_GPSUpdate`.  At the moment this scenario is using both an ideal estimator and and ideal IMU.  Even with these ideal elements, watch the position and velocity errors (bottom right). As you see they are drifting away, since GPS update is not yet implemented.
-
-2. Let's change to using your estimator by setting `Quad.UseIdealEstimator` to 0 in `config/11_GPSUpdate.txt`.  Rerun the scenario to get an idea of how well your estimator work with an ideal IMU.
-
-3. Now repeat with realistic IMU by commenting out these lines in `config/11_GPSUpdate.txt`:
-```
-#SimIMU.AccelStd = 0,0,0
-#SimIMU.GyroStd = 0,0,0
-```
-
-4. Tune the process noise model in `QuadEstimatorEKF.txt` to try to approximately capture the error you see with the estimated uncertainty (standard deviation) of the filter.
-
-5. Implement the EKF GPS Update in the function `UpdateFromGPS()`.
-
-6. Now once again re-run the simulation.  Your objective is to complete the entire simulation cycle with estimated position error of < 1m (you’ll see a green box over the bottom graph if you succeed).  You may want to try experimenting with the GPS update parameters to try and get better performance.
+Finishing the estimator by closing the loop with teh GPS Update, I implement UpdateFromGPS() and parameters so that the scenario passes by meeting the criteria.
 
 ***Success criteria:*** *Your objective is to complete the entire simulation cycle with estimated position error of < 1m.*
 
-**Hint: see section 7.3.1 of [Estimation for Quadrotors](https://www.overleaf.com/read/vymfngphcccj) for a refresher on the GPS update.**
+```java
+
+  zFromX = ekfState.block<6, 1>(0, 0);
+
+  hPrime = Eigen::Matrix<float, 6, QUAD_EKF_NUM_STATES>::Identity();
+```
+
+![11_GPSUpdate](images/11_GPSUpdate.png)
+
+```
+Simulation #1 (../config/11_GPSUpdate.txt)
+Simulation #2 (../config/11_GPSUpdate.txt)
+PASS: ABS(Quad.Est.E.Pos) was less than 1.000000 for at least 20.000000 seconds
+```
 
 At this point, congratulations on having a working estimator!
 

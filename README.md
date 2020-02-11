@@ -116,7 +116,20 @@ In this next step you will be implementing the prediction step of your filter.
 
 2. In `QuadEstimatorEKF.cpp`, implement the state prediction step in the `PredictState()` functon. If you do it correctly, when you run scenario `08_PredictState` you should see the estimator state track the actual state, with only reasonably slow drift, as shown in the figure below:
 
-![predict drift](images/predict-slow-drift.png)
+Implementing the PredictState() with the following algorithm allows our estimator state to track the actual state with a slow drift.
+
+```java
+  V3F accel_g = attitude.Rotate_BtoI(accel);
+
+  predictedState(0) += curState(3) * dt;
+  predictedState(1) += curState(4) * dt;
+  predictedState(2) += curState(5) * dt;
+  predictedState(3) += accel_g.x * dt;
+  predictedState(4) += accel_g.y * dt;
+  predictedState(5) += (accel_g.z - CONST_GRAVITY) * dt;
+```
+
+![predict drift](images/08_PredictState.png)
 
 3. Now let's introduce a realistic IMU, one with noise.  Run scenario `09_PredictionCov`. You will see a small fleet of quadcopter all using your prediction code to integrate forward. You will see two plots:
    - The top graph shows 10 (prediction-only) position X estimates
@@ -135,17 +148,36 @@ You will notice however that the estimated covariance (white bounds) currently d
 
 ![good covariance](images/predict-good-cov.png)
 
-Looking at this result, you can see that in the first part of the plot, our covariance (the white line) grows very much like the data.
+Using Section 7.2 of the Estimation for Quadrotors, I implemented GetRbgPrime() and Predict() functions which produce an acceptable covariance prediction.
 
-If we look at an example with a `QPosXYStd` that is much too high (shown below), we can see that the covariance no longer grows in the same way as the data.
+GetRbgPrime()
 
-![bad x covariance](images/bad-x-sigma.PNG)
+```java
+  RbgPrime(0, 0) = -cos(roll) * sin(yaw);
+  RbgPrime(1, 0) = sin(roll) * sin(yaw);
 
-Another set of bad examples is shown below for having a `QVelXYStd` too large (first) and too small (second).  As you can see, once again, our covariances in these cases no longer model the data well.
+  RbgPrime(0, 1) = -(sin(pitch) * sin(roll) * sin(yaw)) - (cos(pitch) * cos(yaw));
+  RbgPrime(1, 1) = (sin(pitch) * sin(roll) * cos(yaw)) - (cos(pitch) * sin(yaw));
 
-![bad vx cov large](images/bad-vx-sigma.PNG)
+  RbgPrime(0, 2) = -(cos(pitch) * sin(roll) * sin(yaw)) + (sin(pitch) * cos(yaw));
+  RbgPrime(1, 2) = (cos(pitch) * sin(roll) * cos(yaw)) + (sin(pitch) * sin(yaw));
+```
 
-![bad vx cov small](images/bad-vx-sigma-low.PNG)
+Predict()
+```java
+  gPrime.block<3, 3>(0, 3) = Eigen::Matrix3f().setIdentity() * dt;
+
+  Eigen::Vector3f accelVector(accel[0], accel[1], accel[2]);
+  gPrime.block<3, 1>(3, 6) = Eigen::Array3f(dt);
+  gPrime(3, 6) *= accelVector.dot(RbgPrime.row(0));
+  gPrime(4, 6) *= accelVector.dot(RbgPrime.row(1));
+  gPrime(5, 6) *= accelVector.dot(RbgPrime.row(2));
+
+  ekfCov = gPrime * ekfCov * gPrime.transpose() + Q;
+
+```
+
+![09_PredictCovariance](images/09_PredictCovariance.png)
 
 ***Success criteria:*** *This step doesn't have any specific measurable criteria being checked.*
 

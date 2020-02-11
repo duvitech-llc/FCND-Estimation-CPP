@@ -1,64 +1,3 @@
-# Estimation Project #
-
-Welcome to the estimation project.  In this project, you will be developing the estimation portion of the controller used in the CPP simulator.  By the end of the project, your simulated quad will be flying with your estimator and your custom controller (from the previous project)!
-
-This README is broken down into the following sections:
-
- - [Setup](#setup) - the environment and code setup required to get started and a brief overview of the project structure
- - [The Tasks](#the-tasks) - the tasks you will need to complete for the project
- - [Tips and Tricks](#tips-and-tricks) - some additional tips and tricks you may find useful along the way
- - [Submission](#submission) - overview of the requirements for your project submission
-
-
-## Setup ##
-
-This project will continue to use the C++ development environment you set up in the Controls C++ project.
-
- 1. Clone the repository
- ```
- git clone https://github.com/udacity/FCND-Estimation-CPP.git
- ```
-
- 2. Import the code into your IDE like done in the [Controls C++ project](https://github.com/udacity/FCND-Controls-CPP#development-environment-setup)
- 
- 3. You should now be able to compile and run the estimation simulator just as you did in the controls project
-
-
-### Project Structure ###
-
-For this project, you will be interacting with a few more files than before.
-
- - The EKF is already partially implemented for you in `QuadEstimatorEKF.cpp`
-
- - Parameters for tuning the EKF are in the parameter file `QuadEstimatorEKF.txt`
-
- - When you turn on various sensors (the scenarios configure them, e.g. `Quad.Sensors += SimIMU, SimMag, SimGPS`), additional sensor plots will become available to see what the simulated sensors measure.
-
- - The EKF implementation exposes both the estimated state and a number of additional variables. In particular:
-
-   - `Quad.Est.E.X` is the error in estimated X position from true value.  More generally, the variables in `<vehicle>.Est.E.*` are relative errors, though some are combined errors (e.g. MaxEuler).
-
-   - `Quad.Est.S.X` is the estimated standard deviation of the X state (that is, the square root of the appropriate diagonal variable in the covariance matrix). More generally, the variables in `<vehicle>.Est.S.*` are standard deviations calculated from the estimator state covariance matrix.
-
-   - `Quad.Est.D` contains miscellaneous additional debug variables useful in diagnosing the filter. You may or might not find these useful but they were helpful to us in verifying the filter and may give you some ideas if you hit a block.
-
-
-#### `config` Directory ####
-
-In the `config` directory, in addition to finding the configuration files for your controller and your estimator, you will also see configuration files for each of the simulations.  For this project, you will be working with simulations 06 through 11 and you may find it insightful to take a look at the configuration for the simulation.
-
-As an example, if we look through the configuration file for scenario 07, we see the following parameters controlling the sensor:
-
-```
-# Sensors
-Quad.Sensors = SimIMU
-# use a perfect IMU
-SimIMU.AccelStd = 0,0,0
-SimIMU.GyroStd = 0,0,0
-```
-
-This configuration tells us that the simulator is only using an IMU and the sensor data will have no noise.  You will notice that for each simulator these parameters will change slightly as additional sensors are being used and the noise behavior of the sensors change.
-
 
 ## The Tasks ##
 
@@ -85,6 +24,31 @@ For the controls project, the simulator was working with a perfect set of sensor
 
 3. Process the logged files to figure out the standard deviation of the the GPS X signal and the IMU Accelerometer X signal.
 
+I increased the time to 50 seconds to collect more data and used a small python script to determine the standard deviation:
+```python
+from statistics import mean, stdev
+f = open("config/log/Graph1.txt", 'r')
+
+# Remove the first line 
+f.readline()
+
+# Create the list of values 
+values = []
+for line in f.readlines():
+  # After splitting the line, take the last element, remove extra spaces and cast it to int.
+  value = float(line.split(',')[-1].strip())
+  # Add the value to the salaries list.
+  values.append(value)
+# min and max return the minimum and the maximum value of the list.
+print(min(values), max(values))   
+print(mean(values), stdev(values))
+f.close()
+```
+
+`MeasuredStdDev_GPSPosXY = 0.6700750371714136`
+`MeasuredStdDev_AccelX = 0.49677320563152644`
+
+
 4. Plug in your result into the top of `config/6_Sensornoise.txt`.  Specially, set the values for `MeasuredStdDev_GPSPosXY` and `MeasuredStdDev_AccelXY` to be the values you have calculated.
 
 5. Run the simulator. If your values are correct, the dashed lines in the simulation will eventually turn green, indicating you’re capturing approx 68% of the respective measurements (which is what we expect within +/- 1 sigma bound for a Gaussian noise model)
@@ -92,6 +56,17 @@ For the controls project, the simulator was working with a perfect set of sensor
 ***Success criteria:*** *Your standard deviations should accurately capture the value of approximately 68% of the respective measurements.*
 
 NOTE: Your answer should match the settings in `SimulatedSensors.txt`, where you can also grab the simulated noise parameters for all the other sensors.
+
+With the values calculated all tests passed meeting success criteria
+
+![06_SensorNoise](images/06_SensorNoise.png)
+
+```
+Simulation #1 (../config/06_SensorNoise.txt)
+Simulation #2 (../config/06_SensorNoise.txt)
+PASS: ABS(Quad.GPS.X-Quad.Pos.X) was less than MeasuredStdDev_GPSPosXY for 67% of the time
+PASS: ABS(Quad.IMU.AX-0.000000) was less than MeasuredStdDev_AccelXY for 68% of the time
+```
 
 
 ### Step 2: Attitude Estimation ###

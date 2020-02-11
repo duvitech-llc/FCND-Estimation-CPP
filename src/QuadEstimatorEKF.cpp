@@ -93,9 +93,15 @@ void QuadEstimatorEKF::UpdateFromIMU(V3F accel, V3F gyro)
   // (replace the code below)
   // make sure you comment it out when you add your own code -- otherwise e.g. you might integrate yaw twice
 
-  float predictedPitch = pitchEst + dtIMU * gyro.y;
-  float predictedRoll = rollEst + dtIMU * gyro.x;
-  ekfState(6) = ekfState(6) + dtIMU * gyro.z;	// yaw
+  //float predictedPitch = pitchEst + dtIMU * gyro.y;
+  //float predictedRoll = rollEst + dtIMU * gyro.x;
+  //ekfState(6) = ekfState(6) + dtIMU * gyro.z;	// yaw
+
+  Quaternion<float> qt = Quaternion<float>::FromEuler123_RPY(rollEst, pitchEst, ekfState(6)); // RPY to quaternion
+  Quaternion<float> q_t = qt.IntegrateBodyRate(gyro, dtIMU); // q_t = qt * dq
+  float predictedPitch = q_t.Pitch(); // extracted RPY from the quaternion.
+  float predictedRoll = q_t.Roll();
+  ekfState(6) = q_t.Yaw();
 
   // normalize yaw to -pi .. pi
   if (ekfState(6) > F_PI) ekfState(6) -= 2.f*F_PI;

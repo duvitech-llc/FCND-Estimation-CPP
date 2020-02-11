@@ -55,9 +55,7 @@ f.close()
 
 ***Success criteria:*** *Your standard deviations should accurately capture the value of approximately 68% of the respective measurements.*
 
-NOTE: Your answer should match the settings in `SimulatedSensors.txt`, where you can also grab the simulated noise parameters for all the other sensors.
-
-With the values calculated all tests passed meeting success criteria
+Updating the config fiel with the calculated values allowed all tests to pass meeting success criteria.
 
 ![06_SensorNoise](images/06_SensorNoise.png)
 
@@ -80,13 +78,33 @@ Observe that there’s quite a bit of error in attitude estimation.
 
 2. In `QuadEstimatorEKF.cpp`, you will see the function `UpdateFromIMU()` contains a complementary filter-type attitude filter.  To reduce the errors in the estimated attitude (Euler Angles), implement a better rate gyro attitude integration scheme.  You should be able to reduce the attitude errors to get within 0.1 rad for each of the Euler angles, as shown in the screenshot below.
 
-![attitude example](images/attitude-screenshot.png)
+I implemented a small-angle approximation integration method in the function UpdateFromIMU(). Started by getting the quaternion form the Euler Roll/Pitch/Yaw RPY.  Applied the IntegratedBodyRate() to get teh q_t (Nonlinear Complementary Filter). Then extracted roll, pitch and yaw from q_t, with finally normalizing the yaw. Code implemented below.
 
-In the screenshot above the attitude estimation using linear scheme (left) and using the improved nonlinear scheme (right). Note that Y axis on error is much greater on left.
+```java
+  Quaternion<float> qt = Quaternion<float>::FromEuler123_RPY(rollEst, pitchEst, ekfState(6)); // RPY to quaternion
+  Quaternion<float> q_t = qt.IntegrateBodyRate(gyro, dtIMU); // q_t = qt * dq
+  float predictedPitch = q_t.Pitch(); // extracted RPY from the quaternion.
+  float predictedRoll = q_t.Roll();
+  ekfState(6) = q_t.Yaw();
+
+  // normalize yaw to -pi .. pi
+  if (ekfState(6) > F_PI) ekfState(6) -= 2.f*F_PI;
+  if (ekfState(6) < -F_PI) ekfState(6) += 2.f*F_PI;
+```
 
 ***Success criteria:*** *Your attitude estimator needs to get within 0.1 rad for each of the Euler angles for at least 3 seconds.*
 
-**Hint: see section 7.1.2 of [Estimation for Quadrotors](https://www.overleaf.com/read/vymfngphcccj) for a refresher on a good non-linear complimentary filter for attitude using quaternions.**
+With the implemented small-angle approximation integration, all tests meet the success criteria and pass.
+
+![attitude example](images/07_AttitudeEstimation.png)
+
+```
+Simulation #1 (../config/07_AttitudeEstimation.txt)
+Simulation #2 (../config/07_AttitudeEstimation.txt)
+PASS: ABS(Quad.Est.E.MaxEuler) was less than 0.100000 for at least 3.000000 seconds
+Simulation #3 (../config/07_AttitudeEstimation.txt)
+PASS: ABS(Quad.Est.E.MaxEuler) was less than 0.100000 for at least 3.000000 seconds
+```
 
 
 ### Step 3: Prediction Step ###
